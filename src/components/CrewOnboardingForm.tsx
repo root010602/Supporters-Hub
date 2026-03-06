@@ -17,7 +17,6 @@ import { Loader2, Upload, X } from "lucide-react";
 
 
 export default function CrewOnboardingForm() {
-    const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -43,29 +42,27 @@ export default function CrewOnboardingForm() {
 
     const router = useRouter();
 
-    const onSubmit = async (data: FormValues) => {
+    const onSubmit = async (values: FormValues) => {
         setIsSubmitting(true);
-
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-            if (key !== "bannerImage") {
-                formData.append(key, value as string);
-            }
-        });
-
-        if (selectedFile) {
-            formData.append("bannerImage", selectedFile);
-        }
-
         try {
+            const formData = new FormData();
+            Object.entries(values).forEach(([key, value]) => {
+                if (key === "bannerImage" && value instanceof FileList) {
+                    formData.append(key, value[0]);
+                } else if (value !== undefined && value !== null) {
+                    formData.append(key, value.toString());
+                }
+            });
+
             const result = await submitOnboardingForm(formData);
 
             if (result.error) {
                 toast.error(result.error);
-            } else {
-                toast.success("반갑습니다! 가입이 완료되었습니다.");
-                router.push(`/dashboard?nickname=${encodeURIComponent(result.nickname || "")}`);
+                return;
             }
+
+            toast.success("회원가입이 완료되었습니다!");
+            router.push(`/dashboard?nickname=${encodeURIComponent(result.nickname || "")}`);
         } catch (error) {
             toast.error("회원가입 중 오류가 발생했습니다.");
         } finally {
@@ -73,221 +70,232 @@ export default function CrewOnboardingForm() {
         }
     };
 
-    const nextStep = async () => {
-        const fieldsToValidate = [
-            "fullName", "phone", "tourliveEmail", "contactEmail", "activityType", "nickname", "password"
-        ] as const;
-
-        const isValid = await form.trigger(fieldsToValidate);
-        if (isValid) {
-            setStep(2);
-        }
-    };
-
     return (
-        <div className="min-h-screen bg-orange-50/50 py-10 px-4 flex items-center justify-center">
-            <Card className="w-full max-w-lg shadow-[0_8px_30px_rgb(255,133,0,0.08)] border-orange-100 rounded-2xl bg-white overflow-hidden">
-                <CardHeader className="text-center sm:text-left border-b border-orange-50 bg-white pb-6 pt-8">
-                    <CardTitle className="text-2xl font-bold text-primary tracking-tight">투어라이브 크루 회원가입</CardTitle>
-                    <CardDescription className="text-orange-900/60 font-medium mt-2">
-                        {step === 1 ? '1/2 단계 - 회원 기본 정보' : '2/2 단계 - 배너 제작 정보'}
-                    </CardDescription>
+        <div className="min-h-screen bg-orange-50/50 py-16 px-6 flex items-center justify-center">
+            <Card className="w-full max-w-6xl shadow-[0_20px_50px_rgba(255,133,0,0.12)] border-orange-100 rounded-3xl bg-white overflow-hidden">
+                <CardHeader className="border-b border-orange-50 bg-white p-10 pb-8">
+                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                        <div>
+                            <CardTitle className="text-3xl font-extrabold text-primary tracking-tight">투어라이브 크루 회원가입</CardTitle>
+                            <CardDescription className="text-orange-900/60 font-semibold mt-3 text-lg">
+                                14기 활동을 위한 크루 정보를 입력해주세요.
+                            </CardDescription>
+                        </div>
+                        <div className="bg-orange-50 px-4 py-2 rounded-full border border-orange-100">
+                            <span className="text-orange-600 font-bold text-sm">Batch #14</span>
+                        </div>
+                    </div>
                 </CardHeader>
-                <CardContent className="pt-6">
+                <CardContent className="p-10">
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+                                {/* Left Column: 기본 정보 */}
+                                <div className="space-y-8">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white font-bold">1</div>
+                                        <h3 className="text-xl font-bold text-gray-800">기본 정보</h3>
+                                    </div>
 
-                            {step === 1 && (
-                                <>
-                                    <FormField control={form.control} name="fullName" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>이름</FormLabel>
-                                            <FormControl><Input placeholder="홍길동" {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-
-                                    <FormField control={form.control} name="phone" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>휴대폰 번호</FormLabel>
-                                            <FormControl><Input placeholder="010-XXXX-XXXX" {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-
-                                    <FormField control={form.control} name="tourliveEmail" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>투어라이브 계정 이메일</FormLabel>
-                                            <FormControl><Input placeholder="tourlive@example.com" type="email" {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-
-                                    <FormField control={form.control} name="password" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>비밀번호 (추후 로그인용)</FormLabel>
-                                            <FormControl><Input type="password" placeholder="******" {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-
-                                    <FormField control={form.control} name="contactEmail" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>연락용 이메일</FormLabel>
-                                            <FormControl><Input placeholder="personal@example.com" type="email" {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-
-                                    <FormField control={form.control} name="activityType" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>지원 활동</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger><SelectValue placeholder="활동 선택" /></SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="naver_cafe">네이버 '지식여행' 카페 활동</SelectItem>
-                                                    <SelectItem value="personal_blog">개인 블로그 활동</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-
-                                    <FormField control={form.control} name="nickname" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>활동 닉네임</FormLabel>
-                                            <FormControl><Input placeholder="투어라이브닉" {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-
-                                    <Button type="button" onClick={nextStep} className="w-full text-white">다음</Button>
-                                </>
-                            )}
-
-                            {step === 2 && (
-                                <>
-                                    <FormField control={form.control} name="nickname" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>활동 닉네임 (자동입력)</FormLabel>
-                                            <FormControl><Input disabled {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-
-                                    <p className="text-sm font-medium mt-4">여행 국가 및 도시</p>
-                                    <div className="flex gap-4">
-                                        <FormField control={form.control} name="travelCountry" render={({ field }) => (
-                                            <FormItem className="flex-1">
-                                                <FormControl><Input placeholder="프랑스" {...field} /></FormControl>
+                                    <div className="space-y-5">
+                                        <FormField control={form.control} name="fullName" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-gray-700 font-bold">이름</FormLabel>
+                                                <FormControl><Input placeholder="홍길동" className="h-12 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500 text-base" {...field} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
-                                        <FormField control={form.control} name="travelCity" render={({ field }) => (
-                                            <FormItem className="flex-1">
-                                                <FormControl><Input placeholder="파리" {...field} /></FormControl>
+
+                                        <FormField control={form.control} name="phone" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-gray-700 font-bold">휴대폰 번호</FormLabel>
+                                                <FormControl><Input placeholder="010-XXXX-XXXX" className="h-12 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="tourliveEmail" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-gray-700 font-bold">투어라이브 계정</FormLabel>
+                                                    <FormControl><Input placeholder="tourlive@example.com" type="email" className="h-12 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+
+                                            <FormField control={form.control} name="contactEmail" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-gray-700 font-bold">연락용 이메일</FormLabel>
+                                                    <FormControl><Input placeholder="personal@example.com" type="email" className="h-12 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        </div>
+
+                                        <FormField control={form.control} name="password" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-gray-700 font-bold">비밀번호 (추후 로그인용)</FormLabel>
+                                                <FormControl><Input type="password" placeholder="******" className="h-12 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+
+                                        <FormField control={form.control} name="activityType" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-gray-700 font-bold">지원 활동</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl>
+                                                        <SelectTrigger className="h-12 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500"><SelectValue placeholder="활동 선택" /></SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="naver_cafe">네이버 '지식여행' 카페 활동</SelectItem>
+                                                        <SelectItem value="personal_blog">개인 블로그 활동</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
                                     </div>
+                                </div>
 
-                                    {/* Real Image Upload */}
-                                    <FormItem>
-                                        <FormLabel>배너 이미지 업로드</FormLabel>
-                                        <FormControl>
-                                            <div className="relative">
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    id="banner-upload"
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) {
-                                                            setSelectedFile(file);
-                                                            setPreviewUrl(URL.createObjectURL(file));
-                                                            form.setValue("bannerImage", e.target.files);
-                                                        }
-                                                    }}
-                                                />
-                                                <Label
-                                                    htmlFor="banner-upload"
-                                                    className={`
-                                                        border-2 border-dashed rounded-lg p-6 text-center cursor-pointer 
-                                                        hover:bg-orange-50 transition-colors flex flex-col items-center justify-center min-h-32
-                                                        ${previewUrl ? 'border-transparent p-0' : 'border-primary/50'}
-                                                    `}
-                                                >
-                                                    {previewUrl ? (
-                                                        <div className="relative w-full aspect-video rounded-lg overflow-hidden group">
-                                                            <img
-                                                                src={previewUrl}
-                                                                alt="Banner preview"
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                                <span className="text-white text-sm font-medium">이미지 변경</span>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="space-y-2">
-                                                            <Upload className="w-8 h-8 text-primary mx-auto mb-2" />
-                                                            <span className="text-gray-600 text-sm font-medium">
-                                                                클릭하여 배너 이미지를 업로드하세요.
-                                                            </span>
-                                                            <p className="text-xs text-gray-400">배너는 본인의 여행을 잘 보여주는 사진이 좋습니다.</p>
-                                                        </div>
-                                                    )}
-                                                </Label>
-                                                {previewUrl && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            setPreviewUrl(null);
-                                                            setSelectedFile(null);
-                                                            form.setValue("bannerImage", undefined);
-                                                        }}
-                                                        className="absolute top-2 right-2 p-1 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                )}
+                                {/* Right Column: 배너 정보 */}
+                                <div className="space-y-8">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white font-bold">2</div>
+                                        <h3 className="text-xl font-bold text-gray-800">배너 및 활동 정보</h3>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <FormField control={form.control} name="nickname" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-gray-700 font-bold">활동 닉네임</FormLabel>
+                                                <FormControl><Input placeholder="투어라이브닉" className="h-12 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500 font-bold text-orange-600" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-700 mb-2">여행 국가 및 도시</p>
+                                            <div className="flex gap-4">
+                                                <FormField control={form.control} name="travelCountry" render={({ field }) => (
+                                                    <FormItem className="flex-1">
+                                                        <FormControl><Input placeholder="프랑스" className="h-12 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500" {...field} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="travelCity" render={({ field }) => (
+                                                    <FormItem className="flex-1">
+                                                        <FormControl><Input placeholder="파리" className="h-12 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500" {...field} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
                                             </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
+                                        </div>
 
-                                    <p className="text-sm font-medium mt-4">본인 관련 해시태그 3가지</p>
-                                    <div className="flex gap-2">
-                                        <FormField control={form.control} name="hashtag1" render={({ field }) => (
-                                            <FormItem className="flex-1"><FormControl><Input placeholder="#교환학생" {...field} /></FormControl><FormMessage /></FormItem>
-                                        )} />
-                                        <FormField control={form.control} name="hashtag2" render={({ field }) => (
-                                            <FormItem className="flex-1"><FormControl><Input placeholder="#유빙" {...field} /></FormControl><FormMessage /></FormItem>
-                                        )} />
-                                        <FormField control={form.control} name="hashtag3" render={({ field }) => (
-                                            <FormItem className="flex-1"><FormControl><Input placeholder="#유럽" {...field} /></FormControl><FormMessage /></FormItem>
-                                        )} />
-                                    </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-700 mb-2">본인 관련 해시태그 3가지</p>
+                                            <div className="flex gap-3">
+                                                <FormField control={form.control} name="hashtag1" render={({ field }) => (
+                                                    <FormItem className="flex-1"><FormControl><Input placeholder="#교환학생" className="h-12 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500" {...field} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="hashtag2" render={({ field }) => (
+                                                    <FormItem className="flex-1"><FormControl><Input placeholder="#유빙" className="h-12 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500" {...field} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="hashtag3" render={({ field }) => (
+                                                    <FormItem className="flex-1"><FormControl><Input placeholder="#유럽" className="h-12 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500" {...field} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                            </div>
+                                        </div>
 
-                                    <div className="flex justify-between mt-6">
-                                        <Button type="button" variant="outline" onClick={() => setStep(1)}>이전</Button>
-                                        <Button type="submit" disabled={isSubmitting} className="text-white min-w-[100px]">
-                                            {isSubmitting ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    제출 중...
-                                                </>
-                                            ) : (
-                                                "가입 완료"
-                                            )}
-                                        </Button>
+                                        <FormItem>
+                                            <FormLabel className="text-gray-700 font-bold">배너 이미지 업로드</FormLabel>
+                                            <FormControl>
+                                                <div className="relative group">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        id="banner-upload"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                setSelectedFile(file);
+                                                                setPreviewUrl(URL.createObjectURL(file));
+                                                                form.setValue("bannerImage", e.target.files);
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Label
+                                                        htmlFor="banner-upload"
+                                                        className={`
+                                                            border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer 
+                                                            hover:bg-orange-50/50 transition-all flex flex-col items-center justify-center min-h-[200px]
+                                                            ${previewUrl ? 'border-transparent p-0 shadow-lg' : 'border-orange-200 bg-orange-50/20'}
+                                                        `}
+                                                    >
+                                                        {previewUrl ? (
+                                                            <div className="relative w-full h-[200px] rounded-2xl overflow-hidden shadow-inner bg-gray-100">
+                                                                <img
+                                                                    src={previewUrl}
+                                                                    alt="Banner preview"
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                    <div className="bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/30 text-white font-bold">
+                                                                        이미지 변경하기
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-3">
+                                                                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-sm border border-orange-100 group-hover:scale-110 transition-transform">
+                                                                    <Upload className="w-7 h-7 text-orange-500" />
+                                                                </div>
+                                                                <span className="text-gray-700 text-base font-bold">
+                                                                    사진을 업로드하세요
+                                                                </span>
+                                                                <p className="text-sm text-gray-500 px-4">본인의 여행 감성이 잘 드러나는 사진일수록 좋습니다.</p>
+                                                            </div>
+                                                        )}
+                                                    </Label>
+                                                    {previewUrl && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setPreviewUrl(null);
+                                                                setSelectedFile(null);
+                                                                form.setValue("bannerImage", undefined);
+                                                            }}
+                                                            className="absolute -top-3 -right-3 p-2 bg-white shadow-lg border border-orange-100 rounded-full text-orange-500 hover:text-orange-600 transition-colors"
+                                                        >
+                                                            <X className="w-5 h-5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
                                     </div>
-                                </>
-                            )}
+                                </div>
+                            </div>
+
+                            <div className="pt-8 border-t border-orange-50 flex justify-end">
+                                <Button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="w-full md:w-auto md:min-w-[240px] h-14 text-white text-xl font-bold rounded-2xl shadow-xl shadow-orange-200 hover:scale-[1.02] active:scale-[0.98] transition-all bg-gradient-to-r from-orange-500 to-orange-600"
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                                            가입 처리 중...
+                                        </>
+                                    ) : (
+                                        "가입 완료"
+                                    )}
+                                </Button>
+                            </div>
                         </form>
                     </Form>
                 </CardContent>
