@@ -40,7 +40,7 @@ import { getDashboardData } from "@/app/actions/dashboard";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-function DashboardHeader({ nickname, term, dDay }: { nickname: string, term: number, dDay: number }) {
+function DashboardHeader({ nickname, term, dDay, teamName }: { nickname: string, term: number, dDay: number, teamName: string }) {
     return (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
             <div className="flex items-center gap-6">
@@ -48,21 +48,27 @@ function DashboardHeader({ nickname, term, dDay }: { nickname: string, term: num
                     <User className="w-8 h-8" />
                 </div>
                 <div>
-                    <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-800 text-white text-[10px] font-black uppercase tracking-wider">
+                            {teamName}
+                        </span>
+                        <span className="text-slate-400 text-[10px] font-bold">Official Crew</span>
+                    </div>
+                    <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight whitespace-nowrap">
                         반갑습니다, <span className="text-[#FF5C00]">{nickname}</span>님!
                     </h1>
-                    <div className="flex items-center gap-3 mt-2">
-                        <span className="px-3 py-1 rounded-full bg-[#F0F5FF] text-[#0052CC] text-xs font-bold border border-[#D6E4FF]">
+                    <div className="flex items-center gap-3 mt-1.5">
+                        <span className="px-3 py-1 rounded-full bg-[#F0F5FF] text-[#0052CC] text-xs font-bold border border-[#D6E4FF] whitespace-nowrap">
                             {term}기 공식 크루
                         </span>
-                        <p className="text-slate-500 text-sm font-medium">
+                        <p className="text-slate-500 text-sm font-medium whitespace-nowrap">
                             활동 <span className="text-slate-800 font-bold">{dDay}</span>일차입니다
                         </p>
                     </div>
                 </div>
             </div>
             <div className="flex gap-3">
-                <Button variant="outline" className="h-12 rounded-2xl border-slate-200 bg-white text-slate-600 font-bold hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-all">
+                <Button variant="outline" className="h-12 rounded-2xl border-slate-200 bg-white text-slate-600 font-bold hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-all whitespace-nowrap">
                     <Bell className="w-4 h-4 mr-2" />
                     공지사항
                 </Button>
@@ -72,14 +78,21 @@ function DashboardHeader({ nickname, term, dDay }: { nickname: string, term: num
 }
 
 function ActivityStepper({ missions }: { missions: any[] }) {
+    // Specific names for March, April, May as requested
+    const specificMissionNames = [
+        "3월: 가이드북 사용후기글",
+        "4월: 오디오가이드 사용후기글",
+        "5월: 오디오가이드 사용후기글"
+    ];
+
     return (
         <Card className="shadow-[0_4px_24px_rgba(0,0,0,0.04)] border-none rounded-[32px] overflow-hidden bg-white p-2">
             <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between">
-                <CardTitle className="text-xl font-extrabold text-slate-800 flex items-center tracking-tight">
+                <CardTitle className="text-xl font-extrabold text-slate-800 flex items-center tracking-tight whitespace-nowrap">
                     <Target className="w-6 h-6 mr-3 text-[#FF5C00]" />
                     필수 활동 3가지
                 </CardTitle>
-                <div className="px-4 py-1.5 rounded-full bg-slate-50 text-slate-400 text-xs font-bold border border-slate-100 uppercase tracking-wider">
+                <div className="px-4 py-1.5 rounded-full bg-slate-50 text-slate-400 text-[10px] font-black border border-slate-100 uppercase tracking-widest whitespace-nowrap">
                     Term Progress
                 </div>
             </CardHeader>
@@ -100,8 +113,11 @@ function ActivityStepper({ missions }: { missions: any[] }) {
                                 ? "bg-[#FFD6E0] text-[#E63946]"
                                 : "bg-slate-50 text-slate-300";
 
+                        // Use specific names if available, otherwise fallback to mission.title
+                        const displayTitle = specificMissionNames[idx] || mission.title;
+
                         return (
-                            <div key={mission.id} className="relative z-10 flex flex-col items-center group max-w-[100px] text-center">
+                            <div key={mission.id} className="relative z-10 flex flex-col items-center group max-w-[120px] text-center">
                                 <div className={cn(
                                     "w-14 h-14 rounded-2xl flex items-center justify-center border-4 border-white shadow-md transition-all duration-500",
                                     statusColor,
@@ -112,17 +128,17 @@ function ActivityStepper({ missions }: { missions: any[] }) {
                                         : <span className="font-black text-lg">{idx + 1}</span>
                                     }
                                 </div>
-                                <div className="mt-4 flex flex-col items-center gap-1">
+                                <div className="mt-4 flex flex-col items-center gap-1 overflow-hidden w-full">
                                     <span className={cn(
-                                        "text-xs font-black uppercase tracking-widest",
+                                        "text-[10px] font-black uppercase tracking-widest whitespace-nowrap px-2",
                                         mission.status === 'completed' ? "text-[#0052CC]" : mission.status === 'ongoing' ? "text-[#E63946]" : "text-slate-300"
                                     )}>
                                         {mission.status === 'completed' ? '완료' : mission.status === 'ongoing' ? '진행 중' : '대기'}
                                     </span>
                                     <span className={cn(
-                                        "text-sm font-bold leading-tight line-clamp-2",
+                                        "text-xs font-bold leading-tight truncate w-full px-1",
                                         mission.status !== 'pending' ? "text-slate-800" : "text-slate-400"
-                                    )}>{mission.title}</span>
+                                    )} title={displayTitle}>{displayTitle}</span>
                                 </div>
                             </div>
                         );
@@ -136,63 +152,64 @@ function ActivityStepper({ missions }: { missions: any[] }) {
 function TeamMissionList({ team }: { team: string }) {
     const isCafe = team === 'Naver Cafe';
     const currentMonth = new Date().getMonth() + 1;
+    const teamName = isCafe ? "네이버 지식카페 활동" : "네이버 블로그 활동";
 
     return (
         <Card className="shadow-[0_4px_24px_rgba(0,0,0,0.04)] border-none rounded-[32px] overflow-hidden bg-white p-2">
             <CardHeader className="p-8 pb-4">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl font-extrabold text-slate-800 flex items-center tracking-tight">
+                <div className="flex items-center justify-between mb-1">
+                    <CardTitle className="text-xl font-extrabold text-slate-800 flex items-center tracking-tight whitespace-nowrap">
                         {isCafe ? <Coffee className="w-6 h-6 mr-3 text-[#FF5C00]" /> : <BookOpen className="w-6 h-6 mr-3 text-[#0052CC]" />}
-                        {currentMonth}월 팀별 미션 현황
+                        {currentMonth}월 미션 현황
                     </CardTitle>
-                    <span className="text-xs font-black text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
-                        {team} Team
+                    <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100 whitespace-nowrap">
+                        {teamName}
                     </span>
                 </div>
-                <CardDescription className="text-slate-500 font-medium mt-1">
-                    기한 내에 팀별 미션을 완료해 주세요.
+                <CardDescription className="text-slate-500 font-medium mt-1 truncate">
+                    기한 내에 지정된 미션을 완료해 주세요.
                 </CardDescription>
             </CardHeader>
             <CardContent className="px-8 pb-8 space-y-4">
                 {isCafe ? (
                     <>
-                        <div className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <span className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-slate-400 shadow-sm text-xs font-black">01</span>
-                                <span className="text-sm font-bold text-slate-700">여행 정보 게시글 등록</span>
+                        <div className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all duration-300">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <span className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-slate-400 shadow-sm text-xs font-black shrink-0">01</span>
+                                <span className="text-sm font-bold text-slate-700 truncate whitespace-nowrap">여행 정보 게시글 등록</span>
                             </div>
-                            <span className="font-black text-slate-800">0 / 5개</span>
+                            <span className="font-black text-slate-800 ml-4 shrink-0 whitespace-nowrap">0 / 5개</span>
                         </div>
-                        <div className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <span className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-slate-400 shadow-sm text-xs font-black">02</span>
-                                <span className="text-sm font-bold text-slate-700">커뮤니티 댓글 활동</span>
+                        <div className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all duration-300">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <span className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-slate-400 shadow-sm text-xs font-black shrink-0">02</span>
+                                <span className="text-sm font-bold text-slate-700 truncate whitespace-nowrap">커뮤니티 댓글 활동</span>
                             </div>
-                            <span className="font-black text-slate-800">0 / 30개</span>
+                            <span className="font-black text-slate-800 ml-4 shrink-0 whitespace-nowrap">0 / 30개</span>
                         </div>
-                        <div className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 flex items-center justify-between text-orange-600">
-                            <div className="flex items-center gap-3">
-                                <span className="w-8 h-8 rounded-xl bg-orange-600 flex items-center justify-center text-white shadow-sm text-xs font-black">03</span>
-                                <span className="text-sm font-black">가이드북 사용후기글</span>
+                        <div className="p-4 rounded-2xl bg-[#FFF5F1] border border-[#FFD9C6] flex items-center justify-between text-[#FF5C00] group hover:shadow-md transition-all duration-300">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <span className="w-8 h-8 rounded-xl bg-[#FF5C00] flex items-center justify-center text-white shadow-sm text-xs font-black shrink-0">03</span>
+                                <span className="text-sm font-black truncate whitespace-nowrap">가이드북 사용후기글</span>
                             </div>
-                            <span className="font-black">0 / 1개</span>
+                            <span className="font-black ml-4 shrink-0 whitespace-nowrap">0 / 1개</span>
                         </div>
                     </>
                 ) : (
-                    <div className="p-6 rounded-3xl bg-[#F0F5FF]/30 border border-[#D6E4FF] flex items-center justify-between text-[#0052CC]">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-[#0052CC] shadow-sm">
+                    <div className="p-6 rounded-3xl bg-[#F0F5FF]/30 border border-[#D6E4FF] flex items-center justify-between text-[#0052CC] group hover:bg-white hover:shadow-lg transition-all duration-500">
+                        <div className="flex items-center gap-4 overflow-hidden">
+                            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-[#0052CC] shadow-sm shrink-0">
                                 <BookOpen className="w-6 h-6" />
                             </div>
-                            <div>
-                                <span className="text-sm font-black block">가이드북 사용후기글</span>
-                                <span className="text-xs font-bold opacity-60">총 2건의 후기 작성이 필요합니다</span>
+                            <div className="overflow-hidden">
+                                <span className="text-sm font-black block truncate whitespace-nowrap">가이드북 사용후기글</span>
+                                <span className="text-[10px] font-bold opacity-60 truncate whitespace-nowrap tracking-tight">총 2건의 후기 작성이 필요합니다</span>
                             </div>
                         </div>
-                        <span className="font-black text-xl">0 / 2개</span>
+                        <span className="font-black text-xl ml-4 shrink-0 whitespace-nowrap">0 / 2개</span>
                     </div>
                 )}
-                <p className="text-[11px] text-slate-400 font-medium text-center pt-2">
+                <p className="text-[10px] text-slate-400 font-medium text-center pt-2 tracking-tight">
                     * 활동 현황은 매일 오전 6시에 최종 업데이트됩니다.
                 </p>
             </CardContent>
@@ -200,7 +217,7 @@ function TeamMissionList({ team }: { team: string }) {
     );
 }
 
-function SubmissionDialog({ mission }: { mission: any }) {
+function SubmissionDialog({ mission, idx }: { mission: any, idx: number }) {
     const [open, setOpen] = useState(false);
     const [link, setLink] = useState("");
     const [contentText, setContentText] = useState("");
@@ -212,7 +229,15 @@ function SubmissionDialog({ mission }: { mission: any }) {
         closingText: false
     });
 
-    const isReviewMission = mission.title.includes("후기") || mission.title.includes("Review");
+    // Specific names for March, April, May as requested
+    const specificMissionNames = [
+        "3월: 가이드북 사용후기글",
+        "4월: 오디오가이드 사용후기글",
+        "5월: 오디오가이드 사용후기글"
+    ];
+    const displayTitle = specificMissionNames[idx] || mission.title;
+
+    const isReviewMission = displayTitle.includes("후기") || displayTitle.includes("Review");
     const allChecked = !isReviewMission || Object.values(checks).every(Boolean);
     const isValidUTM = link.includes("utm_campaign=") && link.includes("crewid_"); // Simple mock validation
     const hasClosingText = contentText.includes("이 글은 투어라이브 크루 활동의 일환으로");
@@ -240,7 +265,7 @@ function SubmissionDialog({ mission }: { mission: any }) {
             <DialogTrigger asChild>
                 <Button
                     className={cn(
-                        "w-full h-12 rounded-2xl font-bold shadow-sm transition-all hover:scale-[1.02]",
+                        "w-full h-12 rounded-2xl font-bold shadow-sm transition-all hover:scale-[1.02] whitespace-nowrap",
                         mission.status === 'completed' ? "bg-slate-100 text-slate-400 cursor-default" : "bg-[#FF5C00] hover:bg-[#E63900] text-white"
                     )}
                     disabled={mission.status === 'completed'}
@@ -250,8 +275,8 @@ function SubmissionDialog({ mission }: { mission: any }) {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px] rounded-[32px] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] p-0 overflow-hidden bg-white">
                 <DialogHeader className="p-8 pb-0">
-                    <DialogTitle className="text-2xl font-black text-slate-800 tracking-tight">
-                        {mission.title}
+                    <DialogTitle className="text-2xl font-black text-slate-800 tracking-tight truncate px-1">
+                        {displayTitle}
                     </DialogTitle>
                     <DialogDescription className="text-slate-500 font-medium mt-2">
                         활동 가이드라인을 준수하여 미션을 제출해 주세요.
@@ -280,7 +305,7 @@ function SubmissionDialog({ mission }: { mission: any }) {
                                         )}>
                                             {checks[item.key as keyof typeof checks] && <Check className="w-4 h-4 text-white" />}
                                         </div>
-                                        <span className={cn("text-sm font-bold transition-colors", checks[item.key as keyof typeof checks] ? "text-slate-800" : "text-slate-400")}>
+                                        <span className={cn("text-sm font-bold transition-colors whitespace-nowrap", checks[item.key as keyof typeof checks] ? "text-slate-800" : "text-slate-400")}>
                                             {item.label}
                                         </span>
                                     </div>
@@ -327,13 +352,13 @@ function SubmissionDialog({ mission }: { mission: any }) {
                 </div>
 
                 <DialogFooter className="p-8 bg-slate-50/50 border-t border-slate-100 flex-col sm:flex-row gap-3">
-                    <Button variant="outline" onClick={() => setOpen(false)} className="h-14 rounded-2xl border-slate-200 font-bold text-slate-500">
+                    <Button variant="outline" onClick={() => setOpen(false)} className="h-14 rounded-2xl border-slate-200 font-bold text-slate-500 whitespace-nowrap">
                         취소
                     </Button>
                     <Button
                         onClick={handleSubmit}
                         disabled={!link || (isReviewMission && !allChecked)}
-                        className="h-14 rounded-2xl bg-[#FF5C00] hover:bg-[#E63900] text-white font-black shadow-lg shadow-orange-100/50 flex-1 px-8 text-lg"
+                        className="h-14 rounded-2xl bg-[#FF5C00] hover:bg-[#E63900] text-white font-black shadow-lg shadow-orange-100/50 flex-1 px-8 text-lg whitespace-nowrap"
                     >
                         최종 미션 제출하기
                     </Button>
@@ -561,42 +586,56 @@ function DashboardContent() {
         );
     }
 
+    const teamName = data.team === 'Naver Cafe' ? "네이버 지식카페 활동" : "네이버 블로그 활동";
+
     return (
-        <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className="max-w-[1400px] mx-auto px-10 py-16">
             <DashboardHeader
                 nickname={data.nickname}
                 term={data.term}
                 dDay={data.dDay}
+                teamName={teamName}
             />
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                <div className="lg:col-span-4 space-y-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                <div className="lg:col-span-4 space-y-12">
                     <ActivityStepper missions={data.essentialMissions} />
                     <TeamMissionList team={data.team} />
                     <Card className="shadow-[0_4px_24px_rgba(0,0,0,0.04)] border-none rounded-[32px] overflow-hidden bg-white p-2">
                         <div className="h-2 bg-gradient-to-r from-[#FFD6E0] via-[#F0F5FF] to-[#D6E4FF]" />
                         <CardHeader className="p-8 pb-4">
-                            <CardTitle className="text-xl font-extrabold text-slate-800 tracking-tight">미션 제출 데스크</CardTitle>
-                            <CardDescription className="text-slate-500 font-medium mt-1">
-                                진행 중인 필수 활동을 제출해 주세요.
+                            <CardTitle className="text-xl font-extrabold text-slate-800 tracking-tight whitespace-nowrap">미션 제출 데스크</CardTitle>
+                            <CardDescription className="text-slate-500 font-medium mt-1 truncate">
+                                현재 진행 가능한 미션을 선택해 주세요.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="px-8 pb-8 space-y-4">
-                            {data.essentialMissions.map((mission: any) => (
-                                <div key={mission.id} className="space-y-4 pt-4 border-t border-slate-50 first:border-0 first:pt-0">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="text-slate-800 font-bold text-sm">{mission.title}</span>
-                                            <span className={cn(
-                                                "text-[10px] font-black uppercase tracking-widest",
-                                                mission.status === 'completed' ? "text-[#0052CC]" : mission.status === 'ongoing' ? "text-[#E63946]" : "text-slate-300"
-                                            )}>
-                                                {mission.status === 'completed' ? '완료됨' : mission.status === 'ongoing' ? '지금 제출 가능' : '제출 대기'}
-                                            </span>
+                            {data.essentialMissions.map((mission: any, idx: number) => {
+                                // Specific names for March, April, May match
+                                const specificMissionNames = [
+                                    "3월: 가이드북 사용후기글",
+                                    "4월: 오디오가이드 사용후기글",
+                                    "5월: 오디오가이드 사용후기글"
+                                ];
+                                const displayTitle = specificMissionNames[idx] || mission.title;
+
+                                return (
+                                    <div key={mission.id} className="space-y-4 pt-5 border-t border-slate-50 first:border-0 first:pt-0 group">
+                                        <div className="flex items-center justify-between overflow-hidden">
+                                            <div className="flex flex-col gap-0.5 overflow-hidden">
+                                                <span className="text-slate-800 font-bold text-sm truncate whitespace-nowrap" title={displayTitle}>{displayTitle}</span>
+                                                <span className={cn(
+                                                    "text-[10px] font-black uppercase tracking-[0.1em] whitespace-nowrap",
+                                                    mission.status === 'completed' ? "text-[#0052CC]" : mission.status === 'ongoing' ? "text-[#FF5C00]" : "text-slate-200"
+                                                )}>
+                                                    {mission.status === 'completed' ? '완료됨' : mission.status === 'ongoing' ? '지금 제출 가능' : '제출 대기'}
+                                                </span>
+                                            </div>
+                                            {mission.status === 'completed' && <CheckCircle2 className="w-5 h-5 text-[#0052CC] shrink-0 ml-2" />}
                                         </div>
+                                        <SubmissionDialog mission={mission} idx={idx} />
                                     </div>
-                                    <SubmissionDialog mission={mission} />
-                                </div>
-                            ))}
+                                );
+                            })}
                         </CardContent>
                     </Card>
                 </div>
