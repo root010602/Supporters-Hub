@@ -17,6 +17,7 @@ export async function getDashboardData() {
         .from('profiles')
         .select(`
             nickname,
+            selected_activity,
             created_at,
             crews (
                 id,
@@ -69,14 +70,27 @@ export async function getDashboardData() {
     // Map essential missions tracking
     const essentialMissions = (schedules || [])
         .filter(s => s.is_essential && s.type === 'mission')
-        .map(s => ({
-            id: s.id,
-            title: s.title,
-            completed: (submissions || []).some(sub => sub.activity_id === s.id)
-        }));
+        .map(s => {
+            const scheduledAt = new Date(s.scheduled_at);
+            const isCompleted = (submissions || []).some(sub => sub.activity_id === s.id);
+
+            let status: 'completed' | 'ongoing' | 'pending' = 'pending';
+            if (isCompleted) {
+                status = 'completed';
+            } else if (scheduledAt.getMonth() === today.getMonth() && scheduledAt.getFullYear() === today.getFullYear()) {
+                status = 'ongoing';
+            }
+
+            return {
+                id: s.id,
+                title: s.title,
+                status
+            };
+        });
 
     return {
         nickname: profile.nickname,
+        team: profile.selected_activity,
         term: batch.term,
         dDay,
         essentialMissions,

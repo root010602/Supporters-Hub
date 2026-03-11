@@ -1,8 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import {
     CheckCircle2,
@@ -15,11 +28,17 @@ import {
     User,
     ArrowRight,
     Trophy,
-    Target
+    Target,
+    AlertCircle,
+    Check,
+    Coffee,
+    BookOpen,
+    Quote
 } from "lucide-react";
 import { Suspense } from "react";
 import { getDashboardData } from "@/app/actions/dashboard";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 function DashboardHeader({ nickname, term, dDay }: { nickname: string, term: number, dDay: number }) {
     return (
@@ -47,10 +66,6 @@ function DashboardHeader({ nickname, term, dDay }: { nickname: string, term: num
                     <Bell className="w-4 h-4 mr-2" />
                     공지사항
                 </Button>
-                <Button className="h-12 rounded-2xl bg-[#FF5C00] hover:bg-[#E65300] text-white font-bold shadow-lg shadow-orange-100 transition-all hover:scale-[1.02]">
-                    미션 제출하기
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
             </div>
         </div>
     );
@@ -58,14 +73,14 @@ function DashboardHeader({ nickname, term, dDay }: { nickname: string, term: num
 
 function ActivityStepper({ missions }: { missions: any[] }) {
     return (
-        <Card className="mb-8 shadow-[0_4px_24px_rgba(0,0,0,0.04)] border-none rounded-[32px] overflow-hidden bg-white p-2">
+        <Card className="shadow-[0_4px_24px_rgba(0,0,0,0.04)] border-none rounded-[32px] overflow-hidden bg-white p-2">
             <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between">
                 <CardTitle className="text-xl font-extrabold text-slate-800 flex items-center tracking-tight">
                     <Target className="w-6 h-6 mr-3 text-[#FF5C00]" />
-                    3 Essential Missions
+                    필수 활동 3가지
                 </CardTitle>
                 <div className="px-4 py-1.5 rounded-full bg-slate-50 text-slate-400 text-xs font-bold border border-slate-100 uppercase tracking-wider">
-                    Progress
+                    Term Progress
                 </div>
             </CardHeader>
             <CardContent className="p-8 pt-4">
@@ -73,41 +88,258 @@ function ActivityStepper({ missions }: { missions: any[] }) {
                     <div className="absolute top-[36px] left-[10%] w-[80%] h-1 bg-slate-50 -z-0 rounded-full overflow-hidden">
                         <div
                             className="h-full bg-gradient-to-r from-[#FFD6E0] to-[#D6E4FF] transition-all duration-1000"
-                            style={{ width: `${(missions.filter(m => m.completed).length / Math.max(missions.length, 1)) * 100}%` }}
+                            style={{
+                                width: `${(missions.filter(m => m.status === 'completed').length / Math.max(missions.length, 1)) * 100}%`
+                            }}
                         />
                     </div>
                     {missions.map((mission, idx) => {
-                        const pastelColors = ["bg-[#FFD6E0]", "bg-[#F0F5FF]", "bg-[#D6E4FF]"];
-                        const accentColors = ["text-[#E63946]", "text-[#0052CC]", "text-[#0052CC]"];
+                        const statusColor = mission.status === 'completed'
+                            ? "bg-[#D6E4FF] text-[#0052CC]"
+                            : mission.status === 'ongoing'
+                                ? "bg-[#FFD6E0] text-[#E63946]"
+                                : "bg-slate-50 text-slate-300";
 
                         return (
                             <div key={mission.id} className="relative z-10 flex flex-col items-center group max-w-[100px] text-center">
                                 <div className={cn(
                                     "w-14 h-14 rounded-2xl flex items-center justify-center border-4 border-white shadow-md transition-all duration-500",
-                                    mission.completed
-                                        ? cn(pastelColors[idx % 3], "scale-110")
-                                        : "bg-slate-50 border-white text-slate-300 group-hover:bg-white group-hover:border-slate-100"
+                                    statusColor,
+                                    mission.status === 'ongoing' && "scale-110 ring-4 ring-white"
                                 )}>
-                                    {mission.completed
-                                        ? <CheckCircle2 className={cn("w-6 h-6", accentColors[idx % 3])} />
+                                    {mission.status === 'completed'
+                                        ? <CheckCircle2 className="w-6 h-6" />
                                         : <span className="font-black text-lg">{idx + 1}</span>
                                     }
                                 </div>
-                                <span className={cn(
-                                    "mt-4 text-sm font-bold leading-tight line-clamp-2",
-                                    mission.completed ? "text-slate-800" : "text-slate-400"
-                                )}>{mission.title}</span>
+                                <div className="mt-4 flex flex-col items-center gap-1">
+                                    <span className={cn(
+                                        "text-xs font-black uppercase tracking-widest",
+                                        mission.status === 'completed' ? "text-[#0052CC]" : mission.status === 'ongoing' ? "text-[#E63946]" : "text-slate-300"
+                                    )}>
+                                        {mission.status === 'completed' ? '완료' : mission.status === 'ongoing' ? '진행 중' : '대기'}
+                                    </span>
+                                    <span className={cn(
+                                        "text-sm font-bold leading-tight line-clamp-2",
+                                        mission.status !== 'pending' ? "text-slate-800" : "text-slate-400"
+                                    )}>{mission.title}</span>
+                                </div>
                             </div>
                         );
                     })}
-                    {missions.length === 0 && (
-                        <div className="w-full text-center py-8 text-slate-400 italic bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                            등록된 필수 미션이 없습니다.
-                        </div>
-                    )}
                 </div>
             </CardContent>
         </Card>
+    );
+}
+
+function TeamMissionList({ team }: { team: string }) {
+    const isCafe = team === 'Naver Cafe';
+    const currentMonth = new Date().getMonth() + 1;
+
+    return (
+        <Card className="shadow-[0_4px_24px_rgba(0,0,0,0.04)] border-none rounded-[32px] overflow-hidden bg-white p-2">
+            <CardHeader className="p-8 pb-4">
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl font-extrabold text-slate-800 flex items-center tracking-tight">
+                        {isCafe ? <Coffee className="w-6 h-6 mr-3 text-[#FF5C00]" /> : <BookOpen className="w-6 h-6 mr-3 text-[#0052CC]" />}
+                        {currentMonth}월 팀별 미션 현황
+                    </CardTitle>
+                    <span className="text-xs font-black text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                        {team} Team
+                    </span>
+                </div>
+                <CardDescription className="text-slate-500 font-medium mt-1">
+                    기한 내에 팀별 미션을 완료해 주세요.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="px-8 pb-8 space-y-4">
+                {isCafe ? (
+                    <>
+                        <div className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-slate-400 shadow-sm text-xs font-black">01</span>
+                                <span className="text-sm font-bold text-slate-700">여행 정보 게시글 등록</span>
+                            </div>
+                            <span className="font-black text-slate-800">0 / 5개</span>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-slate-400 shadow-sm text-xs font-black">02</span>
+                                <span className="text-sm font-bold text-slate-700">커뮤니티 댓글 활동</span>
+                            </div>
+                            <span className="font-black text-slate-800">0 / 30개</span>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 flex items-center justify-between text-orange-600">
+                            <div className="flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-xl bg-orange-600 flex items-center justify-center text-white shadow-sm text-xs font-black">03</span>
+                                <span className="text-sm font-black">가이드북 사용후기글</span>
+                            </div>
+                            <span className="font-black">0 / 1개</span>
+                        </div>
+                    </>
+                ) : (
+                    <div className="p-6 rounded-3xl bg-[#F0F5FF]/30 border border-[#D6E4FF] flex items-center justify-between text-[#0052CC]">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-[#0052CC] shadow-sm">
+                                <BookOpen className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <span className="text-sm font-black block">가이드북 사용후기글</span>
+                                <span className="text-xs font-bold opacity-60">총 2건의 후기 작성이 필요합니다</span>
+                            </div>
+                        </div>
+                        <span className="font-black text-xl">0 / 2개</span>
+                    </div>
+                )}
+                <p className="text-[11px] text-slate-400 font-medium text-center pt-2">
+                    * 활동 현황은 매일 오전 6시에 최종 업데이트됩니다.
+                </p>
+            </CardContent>
+        </Card>
+    );
+}
+
+function SubmissionDialog({ mission }: { mission: any }) {
+    const [open, setOpen] = useState(false);
+    const [link, setLink] = useState("");
+    const [contentText, setContentText] = useState("");
+    const [checks, setChecks] = useState({
+        appCaptures: false,
+        personalPhotos: false,
+        utmLink: false,
+        banner: false,
+        closingText: false
+    });
+
+    const isReviewMission = mission.title.includes("후기") || mission.title.includes("Review");
+    const allChecked = !isReviewMission || Object.values(checks).every(Boolean);
+    const isValidUTM = link.includes("utm_campaign=") && link.includes("crewid_"); // Simple mock validation
+    const hasClosingText = contentText.includes("이 글은 투어라이브 크루 활동의 일환으로");
+
+    const handleCheck = (key: keyof typeof checks) => {
+        setChecks(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const handleSubmit = () => {
+        if (isReviewMission && !allChecked) {
+            toast.error("모든 체크리스트를 확인해 주세요.");
+            return;
+        }
+        if (isReviewMission && !hasClosingText) {
+            toast.error("필수 하단 멘트가 포함되지 않았습니다.");
+            return;
+        }
+
+        toast.success("미션 제출이 완료되었습니다!");
+        setOpen(false);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button
+                    className={cn(
+                        "w-full h-12 rounded-2xl font-bold shadow-sm transition-all hover:scale-[1.02]",
+                        mission.status === 'completed' ? "bg-slate-100 text-slate-400 cursor-default" : "bg-[#FF5C00] hover:bg-[#E63900] text-white"
+                    )}
+                    disabled={mission.status === 'completed'}
+                >
+                    {mission.status === 'completed' ? '이미 완료됨' : '미션 제출하기'}
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px] rounded-[32px] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] p-0 overflow-hidden bg-white">
+                <DialogHeader className="p-8 pb-0">
+                    <DialogTitle className="text-2xl font-black text-slate-800 tracking-tight">
+                        {mission.title}
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-500 font-medium mt-2">
+                        활동 가이드라인을 준수하여 미션을 제출해 주세요.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="p-8 pt-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                    {isReviewMission && (
+                        <div className="space-y-4 bg-slate-50 p-6 rounded-[24px] border border-slate-100">
+                            <h4 className="text-xs font-black text-slate-400 flex items-center gap-2 uppercase tracking-widest mb-2">
+                                <AlertCircle className="w-4 h-4 text-orange-500" />
+                                Submission Self-Checklist
+                            </h4>
+                            <div className="space-y-3">
+                                {[
+                                    { key: 'appCaptures', label: '투어라이브 앱 캡처 사진 5장 이상 포함' },
+                                    { key: 'personalPhotos', label: '직접 찍은 본인 사진 5장 이상 포함' },
+                                    { key: 'utmLink', label: '투어/가이드북 UTM 링크 첨부 (ID 포함)' },
+                                    { key: 'banner', label: '크루 하단 배너 이미지 삽입' },
+                                    { key: 'closingText', label: '필수 하단 멘트 포함' }
+                                ].map((item) => (
+                                    <div key={item.key} className="flex items-center space-x-3 group cursor-pointer" onClick={() => handleCheck(item.key as any)}>
+                                        <div className={cn(
+                                            "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all shrink-0",
+                                            checks[item.key as keyof typeof checks] ? "bg-orange-600 border-orange-600" : "bg-white border-slate-200 group-hover:border-orange-300"
+                                        )}>
+                                            {checks[item.key as keyof typeof checks] && <Check className="w-4 h-4 text-white" />}
+                                        </div>
+                                        <span className={cn("text-sm font-bold transition-colors", checks[item.key as keyof typeof checks] ? "text-slate-800" : "text-slate-400")}>
+                                            {item.label}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-slate-700 font-black text-sm ml-1 flex items-center">
+                                <ExternalLink className="w-4 h-4 mr-2 text-slate-400" />
+                                게시글 링크 (URL)
+                            </Label>
+                            <Input
+                                value={link}
+                                onChange={(e) => setLink(e.target.value)}
+                                placeholder="https://blog.naver.com/..."
+                                className="h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white text-base shadow-none"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-slate-700 font-black text-sm ml-1 flex items-center">
+                                <Quote className="w-4 h-4 mr-2 text-slate-400" />
+                                게시글 전문 붙여넣기 (검증용)
+                            </Label>
+                            <Textarea
+                                value={contentText}
+                                onChange={(e) => setContentText(e.target.value)}
+                                placeholder="게시글 내용을 전체 복사하여 붙여넣어 주세요. 필수 멘트 포함 여부를 자동으로 확인합니다."
+                                className="min-h-[120px] rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white text-sm shadow-none resize-none leading-relaxed p-4"
+                            />
+                            {contentText && (
+                                <div className={cn(
+                                    "flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full w-fit mt-1",
+                                    hasClosingText ? "bg-[#F0F5FF] text-[#0052CC]" : "bg-[#FFF0F3] text-[#E63946]"
+                                )}>
+                                    {hasClosingText ? '✓ 필수 하단 멘트 확인됨' : '✗ 하단 멘트가 보이지 않습니다'}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter className="p-8 bg-slate-50/50 border-t border-slate-100 flex-col sm:flex-row gap-3">
+                    <Button variant="outline" onClick={() => setOpen(false)} className="h-14 rounded-2xl border-slate-200 font-bold text-slate-500">
+                        취소
+                    </Button>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={!link || (isReviewMission && !allChecked)}
+                        className="h-14 rounded-2xl bg-[#FF5C00] hover:bg-[#E63900] text-white font-black shadow-lg shadow-orange-100/50 flex-1 px-8 text-lg"
+                    >
+                        최종 미션 제출하기
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -235,7 +467,7 @@ function EventCalendar({ schedules }: { schedules: any[] }) {
                                 onClick={() => setSelectedEvent(null)}
                                 className="text-slate-300 hover:text-slate-500 transition-colors p-1"
                             >
-                                <X className="w-5 h-5" />
+                                <CheckCircle2 className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
                         </div>
                         <h4 className="text-lg font-black text-slate-800 leading-tight">{selectedEvent.title}</h4>
@@ -280,14 +512,6 @@ function QuickLinks() {
                 </Link>
             ))}
         </div>
-    );
-}
-
-function X({ className }: { className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-        </svg>
     );
 }
 
@@ -347,32 +571,32 @@ function DashboardContent() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 <div className="lg:col-span-4 space-y-10">
                     <ActivityStepper missions={data.essentialMissions} />
+                    <TeamMissionList team={data.team} />
                     <Card className="shadow-[0_4px_24px_rgba(0,0,0,0.04)] border-none rounded-[32px] overflow-hidden bg-white p-2">
                         <div className="h-2 bg-gradient-to-r from-[#FFD6E0] via-[#F0F5FF] to-[#D6E4FF]" />
                         <CardHeader className="p-8 pb-4">
-                            <CardTitle className="text-xl font-extrabold text-slate-800 tracking-tight">내 활동 현황</CardTitle>
+                            <CardTitle className="text-xl font-extrabold text-slate-800 tracking-tight">미션 제출 데스크</CardTitle>
+                            <CardDescription className="text-slate-500 font-medium mt-1">
+                                진행 중인 필수 활동을 제출해 주세요.
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent className="px-8 pb-8 space-y-6">
-                            <div className="p-4 rounded-[24px] bg-slate-50 flex justify-between items-center transition-all hover:bg-slate-100/50">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-[#E63946] shadow-sm">
-                                        <Target className="w-4 h-4" />
+                        <CardContent className="px-8 pb-8 space-y-4">
+                            {data.essentialMissions.map((mission: any) => (
+                                <div key={mission.id} className="space-y-4 pt-4 border-t border-slate-50 first:border-0 first:pt-0">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-slate-800 font-bold text-sm">{mission.title}</span>
+                                            <span className={cn(
+                                                "text-[10px] font-black uppercase tracking-widest",
+                                                mission.status === 'completed' ? "text-[#0052CC]" : mission.status === 'ongoing' ? "text-[#E63946]" : "text-slate-300"
+                                            )}>
+                                                {mission.status === 'completed' ? '완료됨' : mission.status === 'ongoing' ? '지금 제출 가능' : '제출 대기'}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <span className="text-sm font-bold text-slate-500 tracking-tight">미션 진행률</span>
+                                    <SubmissionDialog mission={mission} />
                                 </div>
-                                <span className="font-black text-slate-800 text-lg">
-                                    {data.essentialMissions.filter((m: any) => m.completed).length} / {data.essentialMissions.length}
-                                </span>
-                            </div>
-                            <div className="p-4 rounded-[24px] bg-slate-50 flex justify-between items-center transition-all hover:bg-slate-100/50">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-[#0052CC] shadow-sm">
-                                        <Trophy className="w-4 h-4" />
-                                    </div>
-                                    <span className="text-sm font-bold text-slate-500 tracking-tight">보유 크루 포인트</span>
-                                </div>
-                                <span className="font-black text-[#FF5C00] text-lg">1,200 P</span>
-                            </div>
+                            ))}
                         </CardContent>
                     </Card>
                 </div>
