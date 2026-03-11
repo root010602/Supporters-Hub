@@ -53,7 +53,7 @@ CREATE TABLE public.profiles (
     crew_id UUID UNIQUE REFERENCES public.crews(id) ON DELETE CASCADE, -- One profile per crew
     full_name TEXT NOT NULL,
     phone_number TEXT NOT NULL,
-    tourlive_email TEXT NOT NULL,
+    tourlive_email TEXT UNIQUE NOT NULL, -- Unique TourLive Account email
     contact_email TEXT NOT NULL,
     selected_activity TEXT NOT NULL, -- Category
     nickname TEXT UNIQUE NOT NULL, -- Unique nickname

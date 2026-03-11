@@ -289,7 +289,7 @@ export default function CrewOnboardingForm() {
                                     {isSubmitting ? (
                                         <>
                                             <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                                            가입 처리 중...
+                                            데이터 저장 중...
                                         </>
                                     ) : (
                                         "가입 완료"

@@ -1,11 +1,13 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { FormValues } from "@/lib/validations/onboarding-schema";
 import { redirect } from "next/navigation";
 
 export async function submitOnboardingForm(formData: FormData) {
     const supabase = await createClient();
+    const adminSupabase = createAdminClient();
 
     const fullName = formData.get("fullName") as string;
     const phone = formData.get("phone") as string;
@@ -25,16 +27,24 @@ export async function submitOnboardingForm(formData: FormData) {
         // Check for admin role based on email domain
         const isAdmin = tourliveEmail.endsWith("@tourlive.co.kr");
 
-        // 1. Sign up the user (Auth)
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        // 0. Check for duplicate account
+        const { data: existingProfile } = await adminSupabase
+            .from('profiles')
+            .select('id')
+            .eq('tourlive_email', tourliveEmail)
+            .single();
+
+        if (existingProfile) {
+            return { error: "이미 가입된 투어라이브 계정입니다. 다시 확인해 주세요." };
+        }
+
+        // 1. Create the user using Admin API to bypass rate limits and auto-confirm
+        const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
             email: tourliveEmail,
             password: password,
-            options: {
-                data: {
-                    full_name: fullName,
-                },
-                // Note: app_metadata role cannot be set via signUp in client/server client without Service Role Key.
-                // For this prototype, we'll assume the user might manually set it or we'd use an RPC.
+            email_confirm: true,
+            user_metadata: {
+                full_name: fullName,
             },
         });
 
@@ -46,6 +56,29 @@ export async function submitOnboardingForm(formData: FormData) {
         const userId = authData.user?.id;
         if (!userId) {
             return { error: "사용자 계정을 생성할 수 없습니다." };
+        }
+
+        // Establish session by signing in
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: tourliveEmail,
+            password: password,
+        });
+
+        if (signInError) {
+            console.error("Sign In Error after Admin Create:", signInError.message);
+            // We continue as the account is created, but the user might need to log in manually.
+        }
+
+        // If user is from tourlive, set their role to admin
+        if (isAdmin) {
+            const { error: roleError } = await adminSupabase.auth.admin.updateUserById(
+                userId,
+                { app_metadata: { role: 'admin' } }
+            );
+            if (roleError) {
+                console.error("Failed to set admin role:", roleError.message);
+                // We continue anyway as the main goal is onboarding
+            }
         }
 
         // Find Default Batch 14
@@ -62,9 +95,8 @@ export async function submitOnboardingForm(formData: FormData) {
         }
 
         // 2. Insert Crew
-        // Note: This might fail due to RLS if the user is not yet an admin.
-        // In a real app, use an RPC with SECURITY DEFINER.
-        const { data: crewData, error: crewError } = await supabase
+        // We use adminSupabase here to bypass RLS policies that restrict insert to admins.
+        const { data: crewData, error: crewError } = await adminSupabase
             .from('crews')
             .insert({
                 user_id: userId,
@@ -105,7 +137,8 @@ export async function submitOnboardingForm(formData: FormData) {
         }
 
         // 4. Insert Profile
-        const { error: profileError } = await supabase
+        // We use adminSupabase here as well to bypass RLS.
+        const { error: profileError } = await adminSupabase
             .from('profiles')
             .insert({
                 crew_id: crewData.id,
