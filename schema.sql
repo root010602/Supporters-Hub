@@ -17,6 +17,7 @@ CREATE TABLE public.batches (
     year INT NOT NULL,
     term INT NOT NULL, -- e.g., 14
     start_date TIMESTAMPTZ, -- Start of the term for D-Day
+    is_active BOOLEAN DEFAULT false, -- Controls if signup is open for this batch
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -57,7 +58,7 @@ CREATE TABLE public.profiles (
     tourlive_email TEXT UNIQUE NOT NULL, -- Unique TourLive Account email
     contact_email TEXT NOT NULL,
     selected_activity TEXT NOT NULL, -- Category
-    nickname TEXT UNIQUE NOT NULL, -- Unique nickname
+    nickname TEXT NOT NULL, -- Nickname (unique check per batch in code)
     -- Banner Info
     travel_country TEXT,
     travel_city TEXT,

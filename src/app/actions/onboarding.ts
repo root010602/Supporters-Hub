@@ -27,35 +27,53 @@ export async function submitOnboardingForm(formData: FormData) {
         // Check for admin role based on email domain
         const isAdmin = tourliveEmail.endsWith("@tourlive.co.kr");
 
-        // 0. Check for duplicate account
-        const { data: existingProfile } = await adminSupabase
-            .from('profiles')
-            .select('id')
-            .eq('tourlive_email', tourliveEmail)
+        // 0. Find current active batch
+        const { data: activeBatch, error: activeBatchError } = await supabase
+            .from('batches')
+            .select('id, term')
+            .eq('is_active', true)
             .single();
 
-        if (existingProfile) {
-            return { error: "이미 가입된 투어라이브 계정입니다. 다시 확인해 주세요." };
+        if (activeBatchError || !activeBatch) {
+            return { error: "현재 진행 중인 크루 모집 기간이 아닙니다." };
         }
 
-        // 1. Create the user using Admin API to bypass rate limits and auto-confirm
-        const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
-            email: tourliveEmail,
-            password: password,
-            email_confirm: true,
-            user_metadata: {
-                full_name: fullName,
-            },
-        });
+        // 1. Check if user already has a profile for this ACTIVE batch
+        const { data: existingInActiveBatch, error: checkError } = await adminSupabase
+            .from('profiles')
+            .select('id, crews!inner(batch_id)')
+            .eq('tourlive_email', tourliveEmail)
+            .eq('crews.batch_id', activeBatch.id)
+            .maybeSingle();
 
-        if (authError) {
-            console.error("Auth Exception:", authError.message);
-            return { error: `계정 생성 실패: ${authError.message}` };
+        if (existingInActiveBatch) {
+            return { error: `이미 ${activeBatch.term}기 크루로 가입된 계정입니다. 대시보드에서 활동을 확인해 주세요.` };
         }
 
-        const userId = authData.user?.id;
-        if (!userId) {
-            return { error: "사용자 계정을 생성할 수 없습니다." };
+        // 2. Auth user handling
+        let userId: string;
+        const { data: listData } = await adminSupabase.auth.admin.listUsers();
+        const existingAuthUser = listData.users.find(u => u.email === tourliveEmail);
+
+        if (existingAuthUser) {
+            userId = existingAuthUser.id;
+        } else {
+            // New user account creation
+            const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
+                email: tourliveEmail,
+                password: password,
+                email_confirm: true,
+                user_metadata: {
+                    full_name: fullName,
+                },
+            });
+
+            if (authError) {
+                console.error("Auth Exception:", authError.message);
+                return { error: `계정 생성 실패: ${authError.message}` };
+            }
+
+            userId = authData.user?.id!;
         }
 
         // Establish session by signing in
@@ -65,42 +83,20 @@ export async function submitOnboardingForm(formData: FormData) {
         });
 
         if (signInError) {
-            console.error("Sign In Error after Admin Create:", signInError.message);
-            // We continue as the account is created, but the user might need to log in manually.
+            console.error("Sign In Error after Admin Create/Link:", signInError.message);
         }
 
-        // If user is from tourlive, set their role to admin
+        // Update admin role if needed
         if (isAdmin) {
-            const { error: roleError } = await adminSupabase.auth.admin.updateUserById(
-                userId,
-                { app_metadata: { role: 'admin' } }
-            );
-            if (roleError) {
-                console.error("Failed to set admin role:", roleError.message);
-                // We continue anyway as the main goal is onboarding
-            }
+            await adminSupabase.auth.admin.updateUserById(userId, { app_metadata: { role: 'admin' } });
         }
 
-        // Find Default Batch 14
-        const { data: batchData, error: batchError } = await supabase
-            .from('batches')
-            .select('id')
-            .eq('term', 14)
-            .limit(1)
-            .single();
-
-        if (batchError || !batchData) {
-            console.error("Could not find Default Batch 14.");
-            return { error: "시스템 오류: 14기 정보를 찾을 수 없습니다." };
-        }
-
-        // 2. Insert Crew
-        // We use adminSupabase here to bypass RLS policies that restrict insert to admins.
+        // 3. Insert Crew for the ACTIVE batch
         const { data: crewData, error: crewError } = await adminSupabase
             .from('crews')
             .insert({
                 user_id: userId,
-                batch_id: batchData.id,
+                batch_id: activeBatch.id,
                 name: fullName,
             })
             .select('id')
@@ -108,15 +104,15 @@ export async function submitOnboardingForm(formData: FormData) {
 
         if (crewError) {
             console.error("Crew Insert Error: ", crewError.message);
-            return { error: "크루 정보 저장 실패 (권한 문제일 수 있습니다)." };
+            return { error: "크루 정보 저장 실패 (이미 가입된 상태일 수 있습니다)." };
         }
 
         let bannerImageUrl = null;
 
-        // 3. Upload Banner Image
+        // 4. Upload Banner Image
         if (bannerImage && bannerImage.size > 0) {
             const fileExt = bannerImage.name.split('.').pop();
-            const fileName = `${userId}-${Date.now()}.${fileExt}`;
+            const fileName = `${userId}-${activeBatch.id}-${Date.now()}.${fileExt}`;
 
             const { error: uploadError } = await supabase
                 .storage
@@ -136,8 +132,7 @@ export async function submitOnboardingForm(formData: FormData) {
             bannerImageUrl = publicUrlData.publicUrl;
         }
 
-        // 4. Insert Profile
-        // We use adminSupabase here as well to bypass RLS.
+        // 5. Insert Profile
         const { error: profileError } = await adminSupabase
             .from('profiles')
             .insert({
@@ -158,9 +153,6 @@ export async function submitOnboardingForm(formData: FormData) {
 
         if (profileError) {
             console.error("Profile Insert Error: ", profileError.message);
-            if (profileError.code === '23505') {
-                return { error: "이미 사용 중인 닉네임입니다." };
-            }
             return { error: "프로필 정보 저장 실패" };
         }
 

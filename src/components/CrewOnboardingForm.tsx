@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { formSchema, FormValues } from "@/lib/validations/onboarding-schema";
@@ -20,6 +20,7 @@ export default function CrewOnboardingForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [activeBatch, setActiveBatch] = useState<{ term: number, id: string } | null>(null);
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -41,6 +42,21 @@ export default function CrewOnboardingForm() {
     });
 
     const router = useRouter();
+
+    useEffect(() => {
+        async function fetchActiveBatch() {
+            const { createClient } = await import("@/utils/supabase/client");
+            const supabase = createClient();
+            const { data, error } = await supabase
+                .from('batches')
+                .select('id, term')
+                .eq('is_active', true)
+                .single();
+
+            if (data) setActiveBatch(data);
+        }
+        fetchActiveBatch();
+    }, []);
 
     const onSubmit = async (values: FormValues) => {
         setIsSubmitting(true);
@@ -78,13 +94,22 @@ export default function CrewOnboardingForm() {
                         <div>
                             <CardTitle className="text-3xl font-extrabold text-primary tracking-tight">투어라이브 크루 회원가입</CardTitle>
                             <CardDescription className="text-orange-900/60 font-semibold mt-3 text-lg">
-                                14기 활동을 위한 크루 정보를 입력해주세요.
+                                {activeBatch ? `${activeBatch.term}기` : '...'} 활동을 위한 크루 정보를 입력해주세요.
                             </CardDescription>
                         </div>
                         <div className="bg-orange-50 px-4 py-2 rounded-full border border-orange-100">
-                            <span className="text-orange-600 font-bold text-sm">Batch #14</span>
+                            <span className="text-orange-600 font-bold text-sm">
+                                {activeBatch ? `Batch #${activeBatch.term}` : 'Batch Loading...'}
+                            </span>
                         </div>
                     </div>
+                    {activeBatch && (
+                        <div className="mt-6 bg-orange-600/10 border border-orange-600/20 p-4 rounded-xl">
+                            <p className="text-orange-700 font-bold text-center">
+                                현재 [{activeBatch.term}]기 크루 회원가입이 진행 중입니다.
+                            </p>
+                        </div>
+                    )}
                 </CardHeader>
                 <CardContent className="p-10">
                     <Form {...form}>

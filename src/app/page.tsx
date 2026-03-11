@@ -1,9 +1,5 @@
-import CrewOnboardingForm from "@/components/CrewOnboardingForm";
+import { redirect } from "next/navigation";
 
-export default function OnboardingPage() {
-  return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-      <CrewOnboardingForm />
-    </main>
-  );
+export default function RootPage() {
+  redirect("/login");
 }
