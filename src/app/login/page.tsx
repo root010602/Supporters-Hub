@@ -75,7 +75,7 @@ export default function LoginPage() {
                     <div className="mt-10 text-center border-t border-slate-50 pt-8">
                         <p className="text-sm text-slate-400 font-medium">
                             아직 크루 신청을 안 하셨나요?{" "}
-                            <Link href="/signup" className="text-[#FF5C00] font-bold hover:underline transition-all">
+                            <Link href="/onboarding" className="text-[#FF5C00] font-bold hover:underline transition-all">
                                 신규 가입하기
                             </Link>
                         </p>
