@@ -34,7 +34,8 @@ import {
     Check,
     Coffee,
     BookOpen,
-    Quote
+    Quote,
+    HelpCircle
 } from "lucide-react";
 import { Suspense } from "react";
 import { getDashboardData } from "@/app/actions/dashboard";
@@ -94,6 +95,11 @@ function DashboardHeader({ nickname }: { nickname: string }) {
             <h1 className="text-4xl font-black text-slate-900 tracking-tight">
                 투어라이브 크루 <span className="text-[#FF5C00] font-black">{nickname}</span>님의 대시보드
             </h1>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 backdrop-blur-sm border border-slate-100 shadow-sm">
+                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none">Tourlive Crew</span>
+                <span className="w-px h-3 bg-slate-200 mx-1" />
+                <span className="text-sm font-black text-slate-800 leading-none">14기</span>
+            </div>
         </div>
     );
 }
@@ -354,8 +360,8 @@ function EventCalendar({ schedules }: { schedules: any[] }) {
 function QuickLinks() {
     const links = [
         { title: "활동 가이드", desc: "미션 가이드라인", icon: FileText, href: "/dashboard/guide" },
-        { title: "공식 커뮤니티", desc: "지식카페 바로가기", icon: Users, href: "https://cafe.naver.com/jisiktravel", external: true },
-        { title: "관리자 문의", desc: "이메일 문의하기", icon: ExternalLink, href: "mailto:root@tourlive.co.kr" }
+        { title: "자주 묻는 질문", desc: "FAQ 보러가기", icon: HelpCircle, href: "/dashboard/faq" },
+        { title: "공식 커뮤니티", desc: "지식카페 바로가기", icon: Users, href: "https://cafe.naver.com/jisiktravel", external: true }
     ];
 
     return (
@@ -455,7 +461,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
     return (
-        <div className="min-h-screen bg-[#F8F9FA] selection:bg-[#FF5C00] selection:text-white">
+        <div className="min-h-screen bg-[#F9F8F3] selection:bg-[#FF5C00] selection:text-white">
             <Suspense fallback={
                 <div className="flex items-center justify-center min-h-screen bg-[#F8F9FA]">
                     <div className="relative w-20 h-20">
