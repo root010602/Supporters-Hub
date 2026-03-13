@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft, HelpCircle, MessageSquare, ExternalLink, Download, Sparkles } from "lucide-react";
+import { signOut } from "@/app/actions/auth";
 
 export default function FAQPage() {
     const faqs = [
@@ -45,13 +46,23 @@ export default function FAQPage() {
                     대시보드로 돌아가기
                 </Link>
 
-                <div className="mb-12">
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">
-                        자주 묻는 질문 (FAQ)
-                    </h1>
-                    <p className="text-slate-500 font-medium">
-                        크루 활동 중 궁금하신 점을 확인해 보세요.
-                    </p>
+                <div className="mb-12 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">
+                            자주 묻는 질문 (FAQ)
+                        </h1>
+                        <p className="text-slate-500 font-medium">
+                            크루 활동 중 궁금하신 점을 확인해 보세요.
+                        </p>
+                    </div>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => signOut()}
+                        className="text-slate-400 hover:text-slate-900 font-bold text-xs"
+                    >
+                        로그아웃
+                    </Button>
                 </div>
 
                 <div className="space-y-6">

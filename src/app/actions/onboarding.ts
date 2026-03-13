@@ -195,7 +195,10 @@ export async function submitOnboardingForm(formData: FormData) {
 
     } catch (error) {
         console.error("[Onboarding] Server Action Exception:", error);
+        // Explicitly handle common error messages or wrap them
         const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류";
+        
+        // Return a structured error that will be caught by the client
         return { error: `회원가입 처리 중 오류가 발생했습니다: ${errorMessage}` };
     }
 }

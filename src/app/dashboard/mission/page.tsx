@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { getDashboardData } from "@/app/actions/dashboard";
 import { submitMission, registerNaverId } from "@/app/actions/mission";
+import { signOut } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -365,13 +366,23 @@ export default function MissionPage() {
                     대시보드로 돌아가기
                 </Link>
 
-                <div className="mb-12">
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">
-                        필수 활동 현황
-                    </h1>
-                    <p className="text-slate-500 font-medium">
-                        진행 중인 미션을 완료하고 성과를 제출해 주세요.
-                    </p>
+                <div className="mb-12 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">
+                            필수 활동 현황
+                        </h1>
+                        <p className="text-slate-500 font-medium">
+                            진행 중인 미션을 완료하고 성과를 제출해 주세요.
+                        </p>
+                    </div>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => signOut()}
+                        className="text-slate-400 hover:text-slate-900 font-bold text-xs"
+                    >
+                        로그아웃
+                    </Button>
                 </div>
 
                 <div className="grid grid-cols-1 gap-8">

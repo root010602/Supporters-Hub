@@ -40,6 +40,7 @@ import {
 import { Suspense } from "react";
 import { getDashboardData } from "@/app/actions/dashboard";
 import { submitMission } from "@/app/actions/mission";
+import { signOut } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -95,10 +96,20 @@ function DashboardHeader({ nickname }: { nickname: string }) {
             <h1 className="text-[25px] font-black text-slate-900 tracking-tight leading-tight">
                 투어라이브 크루 <span className="text-[#FF5C00]">{nickname}</span>님의 대시보드
             </h1>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 backdrop-blur-sm border border-slate-100 shadow-sm">
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none">Tourlive Crew</span>
-                <span className="w-px h-3 bg-slate-200 mx-1" />
-                <span className="text-sm font-black text-slate-800 leading-none">14기</span>
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 backdrop-blur-sm border border-slate-100 shadow-sm">
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none">Tourlive Crew</span>
+                    <span className="w-px h-3 bg-slate-200 mx-1" />
+                    <span className="text-sm font-black text-slate-800 leading-none">14기</span>
+                </div>
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => signOut()}
+                    className="text-slate-400 hover:text-slate-900 font-bold text-xs"
+                >
+                    로그아웃
+                </Button>
             </div>
         </div>
     );
