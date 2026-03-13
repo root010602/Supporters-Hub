@@ -81,7 +81,9 @@ export default function CrewOnboardingForm() {
             toast.success("회원가입이 완료되었습니다!");
             router.push(`/dashboard?nickname=${encodeURIComponent(result.nickname || "")}`);
         } catch (error) {
-            toast.error("회원가입 중 오류가 발생했습니다.");
+            console.error("Onboarding Form Error:", error);
+            const errorMessage = error instanceof Error ? error.message : "회원가입 중 오류가 발생했습니다.";
+            toast.error(errorMessage);
         } finally {
             setIsSubmitting(false);
         }

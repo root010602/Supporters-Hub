@@ -24,6 +24,8 @@ export async function submitOnboardingForm(formData: FormData) {
     const bannerImage = formData.get("bannerImage") as File | null;
 
     try {
+        console.log(`[Onboarding] Starting registration for ${tourliveEmail}`);
+
         // Check for admin role based on email domain
         const isAdmin = tourliveEmail.endsWith("@tourlive.co.kr");
 
@@ -35,40 +37,50 @@ export async function submitOnboardingForm(formData: FormData) {
             .single();
 
         if (activeBatchError || !activeBatch) {
+            console.error("[Onboarding] Active batch error:", activeBatchError);
             return { error: "현재 진행 중인 크루 모집 기간이 아닙니다." };
         }
 
         // 1. Global email duplicate check
-        const { data: globalExisting, error: globalCheckError } = await adminSupabase
+        const { data: globalEmailExisting, error: globalEmailError } = await adminSupabase
             .from('profiles')
             .select('id')
             .eq('tourlive_email', tourliveEmail)
             .maybeSingle();
 
-        if (globalExisting) {
-            return { error: "이미 가입된 투어라이브 계정입니다. 로그인을 시도해 주세요." };
+        if (globalEmailExisting) {
+            return { error: "이미 가입된 투어라이브 계정입니다. 해당 계정으로 로그인을 해주세요." };
         }
 
-        // 1.5. Check if user already has a profile for this ACTIVE batch (redundant but safe)
-        const { data: existingInActiveBatch, error: checkError } = await adminSupabase
+        // 1.2. Global nickname duplicate check
+        const { data: globalNicknameExisting, error: globalNicknameError } = await adminSupabase
             .from('profiles')
-            .select('id, crews!inner(batch_id)')
-            .eq('tourlive_email', tourliveEmail)
-            .eq('crews.batch_id', activeBatch.id)
+            .select('id')
+            .eq('nickname', nickname)
             .maybeSingle();
 
-        if (existingInActiveBatch) {
-            return { error: `이미 ${activeBatch.term}기 크루로 가입된 계정입니다.` };
+        if (globalNicknameExisting) {
+            return { error: "사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요." };
         }
+
+        // All registration checks pass. Proceeding to auth and data insertion.
 
         // 2. Auth user handling
         let userId: string;
-        const { data: listData } = await adminSupabase.auth.admin.listUsers();
-        const existingAuthUser = listData.users.find(u => u.email === tourliveEmail);
+        const { data: listData, error: listError } = await adminSupabase.auth.admin.listUsers();
+        
+        if (listError) {
+            console.error("[Onboarding] List users error:", listError);
+            return { error: "계정 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+        }
+
+        const existingAuthUser = listData?.users?.find(u => u.email === tourliveEmail);
 
         if (existingAuthUser) {
             userId = existingAuthUser.id;
+            console.log(`[Onboarding] Found existing auth user: ${userId}`);
         } else {
+            console.log("[Onboarding] Creating new auth user");
             // New user account creation
             const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
                 email: tourliveEmail,
@@ -80,11 +92,12 @@ export async function submitOnboardingForm(formData: FormData) {
             });
 
             if (authError) {
-                console.error("Auth Exception:", authError.message);
+                console.error("[Onboarding] Auth Create Exception:", authError.message);
                 return { error: `계정 생성 실패: ${authError.message}` };
             }
 
             userId = authData.user?.id!;
+            console.log(`[Onboarding] Created new auth user: ${userId}`);
         }
 
         // Establish session by signing in
@@ -94,15 +107,17 @@ export async function submitOnboardingForm(formData: FormData) {
         });
 
         if (signInError) {
-            console.error("Sign In Error after Admin Create/Link:", signInError.message);
+            console.warn("[Onboarding] Sign In Warning after Admin Create/Link:", signInError.message);
         }
 
         // Update admin role if needed
         if (isAdmin) {
             await adminSupabase.auth.admin.updateUserById(userId, { app_metadata: { role: 'admin' } });
+            console.log(`[Onboarding] Set admin role for ${userId}`);
         }
 
         // 3. Insert Crew for the ACTIVE batch
+        console.log("[Onboarding] Inserting crew record");
         const { data: crewData, error: crewError } = await adminSupabase
             .from('crews')
             .insert({
@@ -114,7 +129,7 @@ export async function submitOnboardingForm(formData: FormData) {
             .single();
 
         if (crewError) {
-            console.error("Crew Insert Error: ", crewError.message);
+            console.error("[Onboarding] Crew Insert Error: ", crewError.message);
             return { error: "크루 정보 저장 실패 (이미 가입된 상태일 수 있습니다)." };
         }
 
@@ -122,6 +137,7 @@ export async function submitOnboardingForm(formData: FormData) {
 
         // 4. Upload Banner Image
         if (bannerImage && bannerImage.size > 0) {
+            console.log("[Onboarding] Uploading banner image");
             const fileExt = bannerImage.name.split('.').pop();
             const fileName = `${userId}-${activeBatch.id}-${Date.now()}.${fileExt}`;
 
@@ -131,7 +147,8 @@ export async function submitOnboardingForm(formData: FormData) {
                 .upload(fileName, bannerImage);
 
             if (uploadError) {
-                console.error("Image Upload Error:", uploadError.message);
+                console.error("[Onboarding] Image Upload Error:", uploadError.message);
+                // Don't fail the whole process for banner upload if possible, or return error
                 return { error: "배너 이미지 업로드 실패" };
             }
 
@@ -141,9 +158,11 @@ export async function submitOnboardingForm(formData: FormData) {
                 .getPublicUrl(fileName);
 
             bannerImageUrl = publicUrlData.publicUrl;
+            console.log(`[Onboarding] Banner uploaded: ${bannerImageUrl}`);
         }
 
         // 5. Insert Profile
+        console.log("[Onboarding] Inserting profile record");
         const { error: profileError } = await adminSupabase
             .from('profiles')
             .insert({
@@ -163,14 +182,17 @@ export async function submitOnboardingForm(formData: FormData) {
             });
 
         if (profileError) {
-            console.error("Profile Insert Error: ", profileError.message);
+            console.error("[Onboarding] Profile Insert Error: ", profileError.message);
+            // If profile fails, we might have a ghost crew record, but handle it
             return { error: "프로필 정보 저장 실패" };
         }
 
+        console.log(`[Onboarding] Registration successful for ${tourliveEmail}`);
         return { success: true, nickname };
 
     } catch (error) {
-        console.error("Server Action Exception:", error);
-        return { error: "회원가입 처리 중 알 수 없는 오류가 발생했습니다." };
+        console.error("[Onboarding] Server Action Exception:", error);
+        const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류";
+        return { error: `회원가입 처리 중 오류가 발생했습니다: ${errorMessage}` };
     }
 }
