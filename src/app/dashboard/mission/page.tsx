@@ -22,7 +22,7 @@ import {
     Smartphone
 } from "lucide-react";
 import { getDashboardData } from "@/app/actions/dashboard";
-import { submitMission, registerNaverId } from "@/app/actions/mission";
+import { submitMission, registerNaverId, syncCafeActivity } from "@/app/actions/mission";
 import { signOut } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -190,15 +190,33 @@ function MissionSubmissionCard({ currentMission }: { currentMission: any }) {
     );
 }
 
-function CafeActivityCard({ profile, currentMission }: { profile: any, currentMission: any }) {
+function CafeActivityCard({ 
+    profile, 
+    currentMission, 
+    onRefresh 
+}: { 
+    profile: any, 
+    currentMission: any, 
+    onRefresh: () => void 
+}) {
     const [naverIdInput, setNaverIdInput] = useState("");
     const [isRegistering, setIsRegistering] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
     const router = useRouter();
 
     const postCount = currentMission?.cafe_post_count || 0;
     const commentCount = currentMission?.cafe_comment_count || 0;
     const postProgress = Math.min((postCount / 5) * 100, 100);
     const commentProgress = Math.min((commentCount / 30) * 100, 100);
+    
+    const lastUpdated = currentMission?.updated_at 
+        ? new Date(currentMission.updated_at).toLocaleString('ko-KR', { 
+            month: 'long', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        }) 
+        : "기록 없음";
 
     const handleRegister = async () => {
         if (!naverIdInput) return;
@@ -208,9 +226,21 @@ function CafeActivityCard({ profile, currentMission }: { profile: any, currentMi
             toast.error(res.error);
         } else {
             toast.success("네이버 ID가 성공적으로 등록되었습니다!");
-            router.refresh();
+            onRefresh();
         }
         setIsRegistering(false);
+    };
+
+    const handleSync = async () => {
+        setIsSyncing(true);
+        const res = await syncCafeActivity(profile.naver_id);
+        if (res.error) {
+            toast.error(res.error);
+        } else {
+            toast.success("활동 내역이 업데이트되었습니다!");
+            onRefresh();
+        }
+        setIsSyncing(false);
     };
 
     return (
@@ -232,12 +262,34 @@ function CafeActivityCard({ profile, currentMission }: { profile: any, currentMi
             <CardContent className="p-8 space-y-8">
                 {profile?.naver_id ? (
                     <div className="space-y-6">
-                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <Smartphone className="w-4 h-4 text-slate-400" />
-                                <span className="text-sm font-bold text-slate-500">연동된 네이버 ID</span>
+                        <div className="flex flex-col md:flex-row gap-4">
+                            <div className="flex-1 p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Smartphone className="w-4 h-4 text-slate-400" />
+                                    <span className="text-sm font-bold text-slate-500">연동된 네이버 ID</span>
+                                </div>
+                                <span className="text-sm font-black text-slate-800">{profile.naver_id}</span>
                             </div>
-                            <span className="text-sm font-black text-slate-800">{profile.naver_id}</span>
+                            <Button
+                                onClick={handleSync}
+                                disabled={isSyncing}
+                                className="h-14 px-6 rounded-xl bg-slate-900 hover:bg-black text-white font-black flex items-center gap-2 shadow-lg shadow-slate-200 shrink-0"
+                            >
+                                {isSyncing ? (
+                                    <RefreshCcw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <RefreshCcw className="w-4 h-4" />
+                                )}
+                                활동 내역 업데이트
+                            </Button>
+                        </div>
+                        
+                        <div className="px-1 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Auto Tracking Active</span>
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-400">최근 업데이트: {lastUpdated}</span>
                         </div>
 
                         <div className="space-y-6">
@@ -332,16 +384,17 @@ export default function MissionPage() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        async function loadData() {
-            const res = await getDashboardData();
-            if ('error' in res) {
-                console.error(res.error);
-            } else {
-                setData(res);
-            }
-            setLoading(false);
+    async function loadData() {
+        const res = await getDashboardData();
+        if ('error' in res) {
+            console.error(res.error);
+        } else {
+            setData(res);
         }
+        setLoading(false);
+    }
+
+    useEffect(() => {
         loadData();
     }, []);
 
@@ -387,7 +440,11 @@ export default function MissionPage() {
 
                 <div className="grid grid-cols-1 gap-8">
                     {data.team === 'Naver Cafe' && (
-                        <CafeActivityCard profile={data} currentMission={data.currentMission} />
+                        <CafeActivityCard 
+                            profile={data} 
+                            currentMission={data.currentMission} 
+                            onRefresh={loadData}
+                        />
                     )}
                     
                     <MissionSubmissionCard currentMission={data.currentMission} />

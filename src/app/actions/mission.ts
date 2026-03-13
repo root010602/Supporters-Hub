@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import * as cheerio from "cheerio";
 
 /**
  * Submits a mission link for the current month.
@@ -119,4 +120,126 @@ export async function registerNaverId(naverId: string) {
 
     revalidatePath("/dashboard/mission");
     return { success: true };
+}
+
+/**
+ * Scrapes Naver Cafe to sync activity counts.
+ */
+export async function syncCafeActivity(naverId: string) {
+    if (!naverId) return { error: "네이버 ID가 등록되어 있지 않습니다." };
+
+    const supabase = await createClient();
+    const CLUB_ID = "31034331";
+    const USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1";
+
+    // 1. Get current month range (March 2026 for now, but dynamic is better)
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+    const missionMonthLabel = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+
+    const startOfMonth = new Date(currentYear, currentMonth, 1);
+    const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
+
+    try {
+        // 2. Fetch Posts
+        const postSearchUrl = `https://m.cafe.naver.com/ArticleSearchList.nhn?search.clubid=${CLUB_ID}&search.writer=${naverId}`;
+        const postRes = await fetch(postSearchUrl, { headers: { "User-Agent": USER_AGENT } });
+        if (!postRes.ok) throw new Error("Naver Cafe post fetch failed");
+        
+        const postHtml = await postRes.text();
+        const $posts = cheerio.load(postHtml);
+        
+        let postCount = 0;
+        $posts("ul.list_area li").each((_, el) => {
+            const dateStr = $posts(el).find(".time").text().trim();
+            // Naver mobile dates are like "24.03.11." or "12:30" (for today)
+            // If it's time, it's today (this month).
+            // If it's date, we check if it falls in the current month.
+            if (dateStr.includes(':')) {
+                postCount++;
+            } else {
+                // Parse date string (e.g., "24.03.11.")
+                const parts = dateStr.split('.').map(p => p.trim()).filter(p => p);
+                if (parts.length === 3) {
+                    const year = 2000 + parseInt(parts[0]);
+                    const month = parseInt(parts[1]) - 1;
+                    const day = parseInt(parts[2]);
+                    const postDate = new Date(year, month, day);
+                    if (postDate >= startOfMonth && postDate <= endOfMonth) {
+                        postCount++;
+                    }
+                }
+            }
+        });
+
+        // 3. Fetch Comments (Member activity log)
+        const commentSearchUrl = `https://m.cafe.naver.com/CafeMemberNetworkView.nhn?search.clubid=${CLUB_ID}&search.memberid=${naverId}&search.networkType=COMMENT`;
+        const commentRes = await fetch(commentSearchUrl, { headers: { "User-Agent": USER_AGENT } });
+        if (!commentRes.ok) throw new Error("Naver Cafe comment fetch failed");
+
+        const commentHtml = await commentRes.text();
+        const $comments = cheerio.load(commentHtml);
+        
+        let commentCount = 0;
+        $comments("ul.list_area li").each((_, el) => {
+            const dateStr = $comments(el).find(".time").text().trim();
+            if (dateStr.includes(':')) {
+                commentCount++;
+            } else {
+                const parts = dateStr.split('.').map(p => p.trim()).filter(p => p);
+                if (parts.length === 3) {
+                    const year = 2000 + parseInt(parts[0]);
+                    const month = parseInt(parts[1]) - 1;
+                    const day = parseInt(parts[2]);
+                    const commentDate = new Date(year, month, day);
+                    if (commentDate >= startOfMonth && commentDate <= endOfMonth) {
+                        commentCount++;
+                    }
+                }
+            }
+        });
+
+        // 4. Update Database
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { error: "로그인이 필요합니다." };
+
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('tourlive_email', user.email)
+            .single();
+
+        if (!profile) return { error: "프로필을 찾을 수 없습니다." };
+
+        const isCompleted = postCount >= 5 && commentCount >= 30;
+
+        const { error: updateError } = await supabase
+            .from('missions')
+            .upsert({
+                profile_id: profile.id,
+                mission_month: missionMonthLabel,
+                cafe_post_count: postCount,
+                cafe_comment_count: commentCount,
+                is_cafe_mission_completed: isCompleted,
+                updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'profile_id,mission_month'
+            });
+
+        if (updateError) throw updateError;
+
+        revalidatePath("/dashboard/mission");
+        return { 
+            success: true, 
+            postCount, 
+            commentCount, 
+            isCompleted,
+            lastSyncedAt: new Date().toISOString()
+        };
+
+    } catch (error) {
+        console.error("[Cafe Sync Error]", error);
+        return { error: "네이버 통신이 원활하지 않습니다. 잠시 후 다시 시도하거나 ID를 확인해주세요." };
+    }
 }
